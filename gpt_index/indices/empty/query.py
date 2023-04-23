@@ -8,6 +8,11 @@ from gpt_index.indices.query.schema import QueryBundle
 from gpt_index.indices.response.type import ResponseMode
 from gpt_index.prompts.default_prompts import DEFAULT_SIMPLE_INPUT_PROMPT
 from gpt_index.prompts.prompts import SimpleInputPrompt
+from gpt_index.response.schema import (
+    RESPONSE_TYPE,
+    Response,
+    StreamingResponse,
+)
 
 
 class GPTEmptyIndexQuery(BaseGPTIndexQuery[EmptyIndex]):
@@ -39,6 +44,29 @@ class GPTEmptyIndexQuery(BaseGPTIndexQuery[EmptyIndex]):
         del query_bundle  # Unused
         return []
 
+    def synthesize(
+        self,
+        query_bundle: QueryBundle,
+        nodes: List[NodeWithScore],
+        additional_source_nodes: Optional[List[NodeWithScore]] = None,
+    ) -> RESPONSE_TYPE:
+        """Synthesize answer with relevant nodes."""
+        del nodes  # Unused
+        del additional_source_nodes  # Unused
+        if not self._streaming:
+            response, _ = self._service_context.llm_predictor.predict(
+                self._input_prompt,
+                query_str=query_bundle.query_str,
+            )
+            return Response(response)
+        else:
+            llm_predictor = self._service_context.llm_predictor
+            response, _ = llm_predictor.predict_with_stream(
+                self._input_prompt,
+                is_last=True,
+                query_str=query_bundle.query_str,
+            )
+            return Response(response)
     @classmethod
     def from_args(  # type: ignore
         cls,
